@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <RootNamespace>InvokeHub</RootNamespace>
+    <AssemblyName>InvokeHub</AssemblyName>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <!-- Azure Functions Dependencies -->
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.2.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
+    
+    <!-- Azure Storage -->
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
+    
+    <!-- Dependency Injection -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  
+  <!-- Eingebettete PowerShell Scripts -->
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\Client.ps1">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  
+  <!-- Ordnerstruktur sicherstellen -->
+  <ItemGroup>
+    <Folder Include="Api\" />
+    <Folder Include="Services\" />
+    <Folder Include="Security\" />
+    <Folder Include="Models\" />
+    <Folder Include="Utilities\" />
+    <Folder Include="Scripts\" />
+  </ItemGroup>
+</Project>

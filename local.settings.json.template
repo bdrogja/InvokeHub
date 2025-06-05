@@ -1,0 +1,18 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "BlobContainerName": "powershell-scripts",
+    "API_PASSWORD": "LocalDev123",
+    "REQUIRE_SIGNED_SCRIPTS": "false",
+    "MAX_SCRIPT_SIZE_KB": "1024",
+    "RATE_LIMIT_SECONDS": "1",
+    "CACHE_CONTROL_SECONDS": "300",
+    "AZURE_FUNCTIONS_ENVIRONMENT": "Development"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*"
+  }
+}
