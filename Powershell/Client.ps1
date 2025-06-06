@@ -6,7 +6,7 @@ function Start-InvokeHub {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [string]$ApiUrl = '',
+        [string]$ApiUrl,
         
         [Parameter(Position = 1)]
         [string]$ApiKey = '',
