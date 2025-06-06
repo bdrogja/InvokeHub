@@ -157,7 +157,7 @@ try {{
         public string GetClientScript()
         {
             // In Produktion: Aus eingebetteter Resource laden
-            return ResourceHelper.LoadEmbeddedResource("Scripts.Client.ps1");
+            return ResourceHelper.LoadEmbeddedResource("Powershell.Client.ps1");
         }
     }
 }

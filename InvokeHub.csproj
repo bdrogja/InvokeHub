@@ -27,7 +27,7 @@
   
   <!-- Eingebettete PowerShell Scripts -->
   <ItemGroup>
-    <EmbeddedResource Include="Scripts\Client.ps1">
+    <EmbeddedResource Include="Powershell\Client.ps1">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
@@ -39,6 +39,6 @@
     <Folder Include="Security\" />
     <Folder Include="Models\" />
     <Folder Include="Utilities\" />
-    <Folder Include="Scripts\" />
+    <Folder Include="Powershell\" />
   </ItemGroup>
 </Project>

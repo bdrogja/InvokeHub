@@ -631,6 +631,3 @@ function ShowHelp {
     Write-Host ""
     Read-Host "  Enter zum Fortfahren"
 }
-
-# Funktion ist automatisch im globalen Scope verfügbar
-# Kein Export nötig, da als Script geladen
