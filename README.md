@@ -43,11 +43,9 @@ func start
 irm http://localhost:7071/api/loader | iex
 ```
 
-### One-Click Azure Deployment
+### Azure Deployment
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fyourusername%2Finvokehub%2Fmain%2Fazuredeploy.json)
-
-Or use the deployment script:
+Use the deployment script:
 ```powershell
 ./scripts/deploy.ps1 -ResourceGroup "rg-invokehub" -Location "westeurope"
 ```
