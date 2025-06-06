@@ -1,12 +1,12 @@
 # InvokeHub Client v1.0.0
 # PowerShell Script Management Platform
-# Optimiert für Windows PowerShell 5.1+ und PowerShell Core 7+ (Windows/macOS/Linux)
+# Optimized for Windows PowerShell 5.1+ and PowerShell Core 7+ (Windows/macOS/Linux)
 
 function Start-InvokeHub {
     [CmdletBinding()]
     param(
         [Parameter(Position = 0)]
-        [string]$ApiUrl,
+        [string]$ApiUrl,  # No default value - must be provided by loader
         
         [Parameter(Position = 1)]
         [string]$ApiKey = '',
@@ -18,7 +18,15 @@ function Start-InvokeHub {
         [switch]$EnableDebug
     )
 
-    # Initialisierung
+    # Validate ApiUrl is provided
+    if ([string]::IsNullOrWhiteSpace($ApiUrl)) {
+        Write-Host "Error: API URL is required." -ForegroundColor Red
+        Write-Host "Please use the loader or provide the URL:" -ForegroundColor Yellow
+        Write-Host "  Start-InvokeHub -ApiUrl 'https://your-api.azurewebsites.net/api'" -ForegroundColor Gray
+        return
+    }
+
+    # Initialization
     $script:ApiUrl = $ApiUrl.TrimEnd('/')
     $script:Headers = @{}
     $script:Timeout = $TimeoutSeconds
@@ -26,20 +34,20 @@ function Start-InvokeHub {
     
     # PowerShell Version Check
     if ($PSVersionTable.PSVersion.Major -lt 5) {
-        Write-Host "Fehler: PowerShell 5.0 oder höher erforderlich." -ForegroundColor Red
-        Write-Host "Aktuelle Version: $($PSVersionTable.PSVersion)" -ForegroundColor Yellow
+        Write-Host "Error: PowerShell 5.0 or higher required." -ForegroundColor Red
+        Write-Host "Current version: $($PSVersionTable.PSVersion)" -ForegroundColor Yellow
         return
     }
     
-    # TLS 1.2 sicherstellen (wichtig für ältere Windows-Versionen)
+    # Ensure TLS 1.2 (important for older Windows versions)
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     }
     catch {
-        Write-Host "Warnung: Konnte TLS 1.2 nicht aktivieren." -ForegroundColor Yellow
+        Write-Host "Warning: Could not enable TLS 1.2." -ForegroundColor Yellow
     }
     
-    # Banner anzeigen
+    # Show banner
     function Show-Banner {
         Clear-Host
         Write-Host ""
@@ -47,12 +55,12 @@ function Start-InvokeHub {
         Write-Host "  ===============" -ForegroundColor DarkGray
         Write-Host "  Script Management Platform" -ForegroundColor Gray
         if ($script:DebugMode) {
-            Write-Host "  DEBUG MODE AKTIV" -ForegroundColor Yellow
+            Write-Host "  DEBUG MODE ACTIVE" -ForegroundColor Yellow
         }
         Write-Host ""
     }
 
-    # Sichere Eingabe-Funktion
+    # Secure input function
     function Read-SecureInput {
         param(
             [string]$Prompt,
@@ -65,9 +73,9 @@ function Start-InvokeHub {
         
         $secure = Read-Host $Prompt -AsSecureString
         
-        # Cross-Platform sichere String-Konvertierung
+        # Cross-platform secure string conversion
         try {
-            # Neue Methode für .NET Core
+            # New method for .NET Core
             if ([System.Runtime.InteropServices.Marshal]::PtrToStringBSTR) {
                 $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
                 try {
@@ -79,7 +87,7 @@ function Start-InvokeHub {
             }
         }
         catch {
-            # Fallback für ältere Versionen
+            # Fallback for older versions
             $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
             try {
                 return [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($ptr)
@@ -90,7 +98,7 @@ function Start-InvokeHub {
         }
     }
 
-    # API-Aufruf mit Fehlerbehandlung
+    # API call with error handling
     function Invoke-ApiRequest {
         param(
             [string]$Endpoint,
@@ -127,64 +135,64 @@ function Start-InvokeHub {
             $statusDescription = $_.Exception.Response.StatusDescription
             
             if ($statusCode -eq 401) {
-                throw "Authentifizierung fehlgeschlagen. Bitte Zugangsdaten prüfen."
+                throw "Authentication failed. Please check credentials."
             }
             elseif ($statusCode -eq 429) {
-                throw "Zu viele Anfragen. Bitte kurz warten."
+                throw "Too many requests. Please wait a moment."
             }
             elseif ($statusCode -eq 404) {
-                throw "Endpunkt nicht gefunden: $Endpoint"
+                throw "Endpoint not found: $Endpoint"
             }
             elseif ($statusCode -ge 500) {
-                throw "Server-Fehler ($statusCode): $statusDescription"
+                throw "Server error ($statusCode): $statusDescription"
             }
             else {
-                throw "API-Fehler: $_"
+                throw "API error: $_"
             }
         }
     }
 
-    # Authentifizierung
+    # Authentication
     Show-Banner
     
     try {
         if ($UsePassword) {
-            Write-Host "  Passwort-Authentifizierung" -ForegroundColor Yellow
-            $password = Read-SecureInput -Prompt "  Passwort"
+            Write-Host "  Password Authentication" -ForegroundColor Yellow
+            $password = Read-SecureInput -Prompt "  Password"
             $script:Headers = @{ 'X-API-Key' = $password }
         }
         elseif ($ApiKey) {
             $script:Headers = @{ 'X-API-Key' = $ApiKey }
         }
         else {
-            Write-Host "  API-Key erforderlich" -ForegroundColor Yellow
-            $key = Read-SecureInput -Prompt "  API-Key"
+            Write-Host "  API Key Required" -ForegroundColor Yellow
+            $key = Read-SecureInput -Prompt "  API Key"
             $script:Headers = @{ 'X-API-Key' = $key }
         }
 
-        # Authentifizierung testen
+        # Test authentication
         Write-Host ""
-        Write-Host "  Verbinde..." -ForegroundColor Gray
+        Write-Host "  Connecting..." -ForegroundColor Gray
         
         $auth = Invoke-ApiRequest -Endpoint 'auth' -Method 'POST'
         
         if ($auth.authenticated) {
-            Write-Host "  ✓ Erfolgreich verbunden!" -ForegroundColor Green
+            Write-Host "  ✓ Successfully connected!" -ForegroundColor Green
             if ($auth.sessionToken) {
                 $script:Headers['X-Session-Token'] = $auth.sessionToken
             }
             Start-Sleep -Milliseconds 500
         }
         else {
-            throw "Authentifizierung fehlgeschlagen"
+            throw "Authentication failed"
         }
     }
     catch {
-        Write-Host "  ✗ Fehler: $_" -ForegroundColor Red
+        Write-Host "  ✗ Error: $_" -ForegroundColor Red
         return
     }
 
-    # Hauptmenü
+    # Main menu
     MainMenu
 }
 
@@ -193,36 +201,36 @@ function MainMenu {
         try {
             Show-Banner
             
-            # Menü laden mit Fehlerbehandlung
-            Write-Host "  Lade Repository..." -ForegroundColor Gray
+            # Load menu with error handling
+            Write-Host "  Loading repository..." -ForegroundColor Gray
             $menu = Invoke-ApiRequest -Endpoint 'menu'
             
-            # Scripts sammeln mit verbesserter Performance
+            # Collect scripts with improved performance
             $allScripts = [System.Collections.Generic.List[PSObject]]::new()
             CollectScripts -Node $menu -Scripts $allScripts
             
             if ($allScripts.Count -eq 0) {
-                Write-Host "  ⚠ Keine Scripts im Repository gefunden." -ForegroundColor Yellow
+                Write-Host "  ⚠ No scripts found in repository." -ForegroundColor Yellow
                 Write-Host ""
-                Read-Host "  Enter zum Beenden"
+                Read-Host "  Press Enter to exit"
                 return
             }
             
             Write-Host "  Repository: $($allScripts.Count) Scripts" -ForegroundColor Yellow
             Write-Host ""
             
-            # Nach Ordner gruppiert anzeigen mit Pagination
+            # Display grouped by folder with pagination
             Show-ScriptMenu -Scripts $allScripts
             
             Write-Host ""
-            Write-Host "  [S] Suchen | [F] Filter | [H] Hilfe | [Q] Beenden" -ForegroundColor Cyan
+            Write-Host "  [S] Search | [F] Filter | [H] Help | [Q] Quit" -ForegroundColor Cyan
             Write-Host ""
             
-            $choice = Read-Host "  Auswahl"
+            $choice = Read-Host "  Selection"
             
             switch -Regex ($choice) {
                 '^[Qq]$' { 
-                    Write-Host "`n  Auf Wiedersehen!" -ForegroundColor Green
+                    Write-Host "`n  Goodbye!" -ForegroundColor Green
                     return 
                 }
                 '^[Hh]$' { ShowHelp }
@@ -235,21 +243,21 @@ function MainMenu {
                         ShowScriptActions -Script $selected
                     }
                     else {
-                        Write-Host "  ⚠ Ungültige Auswahl" -ForegroundColor Yellow
+                        Write-Host "  ⚠ Invalid selection" -ForegroundColor Yellow
                         Start-Sleep -Seconds 1
                     }
                 }
                 default {
-                    Write-Host "  ⚠ Ungültige Eingabe" -ForegroundColor Yellow
+                    Write-Host "  ⚠ Invalid input" -ForegroundColor Yellow
                     Start-Sleep -Seconds 1
                 }
             }
         }
         catch {
-            Write-Host "  Fehler: $_" -ForegroundColor Red
+            Write-Host "  Error: $_" -ForegroundColor Red
             Write-Host ""
-            $retry = Read-Host "  Erneut versuchen? (J/N)"
-            if ($retry -ne 'J' -and $retry -ne 'j') {
+            $retry = Read-Host "  Try again? (Y/N)"
+            if ($retry -ne 'Y' -and $retry -ne 'y') {
                 return
             }
         }
@@ -269,7 +277,7 @@ function Show-ScriptMenu {
     
     foreach ($group in $grouped | Sort-Object Name) {
         if ($currentIndex -gt $maxItemsPerScreen) {
-            Write-Host "  ... und $($Scripts.Count - $maxItemsPerScreen) weitere. Nutze [S]uche für mehr." -ForegroundColor Gray
+            Write-Host "  ... and $($Scripts.Count - $maxItemsPerScreen) more. Use [S]earch for more." -ForegroundColor Gray
             break
         }
         
@@ -319,80 +327,80 @@ function ShowScriptActions {
     Write-Host "  $($Script.Name)" -ForegroundColor Cyan
     Write-Host "  $('=' * $Script.Name.Length)" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  Pfad: $($Script.FullPath)" -ForegroundColor Gray
-    Write-Host "  Größe: $([math]::Round($Script.Size / 1KB, 1)) KB" -ForegroundColor Gray
+    Write-Host "  Path: $($Script.FullPath)" -ForegroundColor Gray
+    Write-Host "  Size: $([math]::Round($Script.Size / 1KB, 1)) KB" -ForegroundColor Gray
     
     if ($Script.LastModified) {
-        Write-Host "  Geändert: $($Script.LastModified)" -ForegroundColor Gray
+        Write-Host "  Modified: $($Script.LastModified)" -ForegroundColor Gray
     }
     
     if ($Script.Metadata -and $Script.Metadata.Count -gt 0) {
-        Write-Host "  Metadaten:" -ForegroundColor Gray
+        Write-Host "  Metadata:" -ForegroundColor Gray
         foreach ($key in $Script.Metadata.Keys) {
             Write-Host "    $key : $($Script.Metadata[$key])" -ForegroundColor Gray
         }
     }
     
     Write-Host ""
-    Write-Host "  [1] Ausführen" -ForegroundColor Green
-    Write-Host "  [2] Herunterladen" -ForegroundColor Yellow
-    Write-Host "  [3] Inhalt anzeigen" -ForegroundColor Cyan
-    Write-Host "  [4] In Zwischenablage kopieren" -ForegroundColor Magenta
-    Write-Host "  [0] Zurück" -ForegroundColor Gray
+    Write-Host "  [1] Execute" -ForegroundColor Green
+    Write-Host "  [2] Download" -ForegroundColor Yellow
+    Write-Host "  [3] View Content" -ForegroundColor Cyan
+    Write-Host "  [4] Copy to Clipboard" -ForegroundColor Magenta
+    Write-Host "  [0] Back" -ForegroundColor Gray
     Write-Host ""
     
-    $action = Read-Host "  Aktion"
+    $action = Read-Host "  Action"
     
     if ($action -in '1','2','3','4') {
         try {
             Write-Host ""
-            Write-Host "  Lade Script..." -ForegroundColor Gray
+            Write-Host "  Loading script..." -ForegroundColor Gray
             
             $response = Invoke-ApiRequest -Endpoint "script?path=$([Uri]::EscapeDataString($Script.Path))"
             
             if ($null -eq $response -or $null -eq $response.content) {
-                throw "Leere Antwort vom Server"
+                throw "Empty response from server"
             }
             
             switch ($action) {
-                '1' { # Ausführen
+                '1' { # Execute
                     Write-Host ""
-                    Write-Host "  ⚠ WARNUNG: Sie sind dabei, ein Script auszuführen!" -ForegroundColor Yellow
-                    Write-Host "  Nur fortfahren, wenn Sie dem Script vertrauen." -ForegroundColor Yellow
+                    Write-Host "  ⚠ WARNING: You are about to execute a script!" -ForegroundColor Yellow
+                    Write-Host "  Only proceed if you trust the script." -ForegroundColor Yellow
                     Write-Host ""
                     
                     if ($response.contentHash) {
-                        Write-Host "  Script-Hash: $($response.contentHash)" -ForegroundColor Gray
+                        Write-Host "  Script hash: $($response.contentHash)" -ForegroundColor Gray
                     }
                     
-                    $confirm = Read-Host "  Script wirklich ausführen? (JA zum Bestätigen)"
-                    if ($confirm -eq 'JA') {
+                    $confirm = Read-Host "  Really execute script? (YES to confirm)"
+                    if ($confirm -eq 'YES') {
                         Write-Host ""
-                        Write-Host "  === Ausführung ===" -ForegroundColor Cyan
+                        Write-Host "  === Execution ===" -ForegroundColor Cyan
                         Write-Host ""
                         
                         try {
-                            # Script in isoliertem Scope ausführen
+                            # Execute script in isolated scope
                             $scriptBlock = [scriptblock]::Create($response.content)
                             & $scriptBlock
                         }
                         catch {
-                            Write-Host "  Script-Fehler: $_" -ForegroundColor Red
+                            Write-Host "  Script error: $_" -ForegroundColor Red
                         }
                         
                         Write-Host ""
-                        Write-Host "  === Ende ===" -ForegroundColor Cyan
+                        Write-Host "  === End ===" -ForegroundColor Cyan
                     }
                     else {
-                        Write-Host "  Ausführung abgebrochen." -ForegroundColor Yellow
+                        Write-Host "  Execution cancelled." -ForegroundColor Yellow
                     }
                 }
                 '2' { # Download
                     $fileName = Split-Path $Script.Path -Leaf
                     $defaultPath = Join-Path ([Environment]::GetFolderPath('Desktop')) $fileName
                     
-                    Write-Host "  Standard-Speicherort: $defaultPath" -ForegroundColor Gray
-                    $savePath = Read-Host "  Speichern als (Enter für Standard)"
+                    Write-Host "  Default location: $defaultPath" -ForegroundColor Gray
+                    $savePath = Read-Host "  Save as (Enter for default)"
                     
                     if ([string]::IsNullOrWhiteSpace($savePath)) { 
                         $savePath = $defaultPath 
@@ -400,11 +408,11 @@ function ShowScriptActions {
                     
                     try {
                         $response.content | Out-File -FilePath $savePath -Encoding UTF8 -Force
-                        Write-Host "  ✓ Gespeichert: $savePath" -ForegroundColor Green
+                        Write-Host "  ✓ Saved: $savePath" -ForegroundColor Green
                         
-                        # Öffnen-Option anbieten
-                        $open = Read-Host "  Datei öffnen? (J/N)"
-                        if ($open -eq 'J' -or $open -eq 'j') {
+                        # Offer to open
+                        $open = Read-Host "  Open file? (Y/N)"
+                        if ($open -eq 'Y' -or $open -eq 'y') {
                             if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
                                 Start-Process notepad.exe -ArgumentList $savePath
                             }
@@ -412,25 +420,25 @@ function ShowScriptActions {
                                 Start-Process open -ArgumentList $savePath
                             }
                             else {
-                                Write-Host "  Bitte öffnen Sie die Datei manuell." -ForegroundColor Yellow
+                                Write-Host "  Please open the file manually." -ForegroundColor Yellow
                             }
                         }
                     }
                     catch {
-                        Write-Host "  Fehler beim Speichern: $_" -ForegroundColor Red
+                        Write-Host "  Error saving: $_" -ForegroundColor Red
                     }
                 }
-                '3' { # Anzeigen
+                '3' { # View
                     Write-Host ""
-                    Write-Host "  === Inhalt von $($Script.Name) ===" -ForegroundColor Cyan
+                    Write-Host "  === Content of $($Script.Name) ===" -ForegroundColor Cyan
                     Write-Host ""
                     
-                    # Syntax-Highlighting für bessere Lesbarkeit
+                    # Syntax highlighting for better readability
                     $lines = $response.content -split "`n"
                     $lineNumber = 1
                     
                     foreach ($line in $lines) {
-                        # Einfaches Syntax-Highlighting
+                        # Simple syntax highlighting
                         if ($line -match '^\s*#') {
                             Write-Host ("${lineNumber}: " + $line) -ForegroundColor Green
                         }
@@ -445,39 +453,39 @@ function ShowScriptActions {
                         }
                         $lineNumber++
                         
-                        # Pagination für lange Scripts
+                        # Pagination for long scripts
                         if ($lineNumber % 30 -eq 0) {
-                            $cont = Read-Host "  --- Mehr anzeigen? (Enter/Q) ---"
+                            $cont = Read-Host "  --- Show more? (Enter/Q) ---"
                             if ($cont -eq 'Q' -or $cont -eq 'q') { break }
                         }
                     }
                     
                     Write-Host ""
-                    Write-Host "  === Ende (${lineNumber} Zeilen) ===" -ForegroundColor Cyan
+                    Write-Host "  === End (${lineNumber} lines) ===" -ForegroundColor Cyan
                 }
-                '4' { # In Zwischenablage
+                '4' { # Copy to clipboard
                     try {
                         if (Get-Command Set-Clipboard -ErrorAction SilentlyContinue) {
                             $response.content | Set-Clipboard
-                            Write-Host "  ✓ In Zwischenablage kopiert!" -ForegroundColor Green
+                            Write-Host "  ✓ Copied to clipboard!" -ForegroundColor Green
                         }
                         else {
-                            Write-Host "  ⚠ Zwischenablage nicht verfügbar auf diesem System." -ForegroundColor Yellow
-                            Write-Host "  Nutzen Sie Option [2] zum Speichern." -ForegroundColor Yellow
+                            Write-Host "  ⚠ Clipboard not available on this system." -ForegroundColor Yellow
+                            Write-Host "  Use option [2] to save instead." -ForegroundColor Yellow
                         }
                     }
                     catch {
-                        Write-Host "  Fehler beim Kopieren: $_" -ForegroundColor Red
+                        Write-Host "  Error copying: $_" -ForegroundColor Red
                     }
                 }
             }
         }
         catch {
-            Write-Host "  Fehler: $_" -ForegroundColor Red
+            Write-Host "  Error: $_" -ForegroundColor Red
         }
         
         Write-Host ""
-        Read-Host "  Enter zum Fortfahren"
+        Read-Host "  Press Enter to continue"
     }
 }
 
@@ -486,16 +494,16 @@ function SearchScripts {
     
     Clear-Host
     Write-Host ""
-    Write-Host "  Suche" -ForegroundColor Cyan
-    Write-Host "  =====" -ForegroundColor DarkGray
+    Write-Host "  Search" -ForegroundColor Cyan
+    Write-Host "  ======" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  Tipp: Verwende * als Wildcard (z.B. *test*)" -ForegroundColor Gray
+    Write-Host "  Tip: Use * as wildcard (e.g. *test*)" -ForegroundColor Gray
     Write-Host ""
     
-    $search = Read-Host "  Suchbegriff"
+    $search = Read-Host "  Search term"
     if ([string]::IsNullOrWhiteSpace($search)) { return }
     
-    # Erweiterte Suche
+    # Extended search
     $found = $Scripts | Where-Object { 
         $_.Name -like "*$search*" -or 
         $_.FullPath -like "*$search*" -or
@@ -505,7 +513,7 @@ function SearchScripts {
     
     if ($found) {
         Write-Host ""
-        Write-Host "  Gefunden: $($found.Count) Ergebnis(se)" -ForegroundColor Green
+        Write-Host "  Found: $($found.Count) result(s)" -ForegroundColor Green
         Write-Host ""
         
         $index = 1
@@ -518,7 +526,7 @@ function SearchScripts {
         }
         
         Write-Host ""
-        $selection = Read-Host "  Auswahl (Nummer oder Enter)"
+        $selection = Read-Host "  Selection (number or Enter)"
         
         if ($selection -match '^\d+$') {
             $selectedIndex = [int]$selection - 1
@@ -528,9 +536,9 @@ function SearchScripts {
         }
     }
     else {
-        Write-Host "  Keine Ergebnisse für '$search' gefunden." -ForegroundColor Yellow
+        Write-Host "  No results found for '$search'." -ForegroundColor Yellow
         Write-Host ""
-        Read-Host "  Enter zum Fortfahren"
+        Read-Host "  Press Enter to continue"
     }
 }
 
@@ -540,15 +548,15 @@ function FilterScripts {
     Clear-Host
     Write-Host ""
     Write-Host "  Filter" -ForegroundColor Cyan
-    Write-Host "  =======" -ForegroundColor DarkGray
+    Write-Host "  ======" -ForegroundColor DarkGray
     Write-Host ""
     
-    # Verfügbare Ordner anzeigen
+    # Show available folders
     $folders = $Scripts | ForEach-Object { Split-Path $_.FullPath -Parent } | 
                Where-Object { $_ } | Select-Object -Unique | Sort-Object
     
     if ($folders) {
-        Write-Host "  Verfügbare Ordner:" -ForegroundColor Yellow
+        Write-Host "  Available folders:" -ForegroundColor Yellow
         $index = 1
         foreach ($folder in $folders) {
             Write-Host "  [$index] $folder" -ForegroundColor Green
@@ -556,7 +564,7 @@ function FilterScripts {
         }
         
         Write-Host ""
-        $selection = Read-Host "  Ordner wählen (Nummer)"
+        $selection = Read-Host "  Choose folder (number)"
         
         if ($selection -match '^\d+$') {
             $selectedIndex = [int]$selection - 1
@@ -577,7 +585,7 @@ function FilterScripts {
                 }
                 
                 Write-Host ""
-                $scriptSelection = Read-Host "  Script wählen (Nummer)"
+                $scriptSelection = Read-Host "  Choose script (number)"
                 
                 if ($scriptSelection -match '^\d+$') {
                     $scriptIndex = [int]$scriptSelection - 1
@@ -589,45 +597,45 @@ function FilterScripts {
         }
     }
     else {
-        Write-Host "  Keine Ordner gefunden." -ForegroundColor Yellow
-        Read-Host "  Enter zum Fortfahren"
+        Write-Host "  No folders found." -ForegroundColor Yellow
+        Read-Host "  Press Enter to continue"
     }
 }
 
 function ShowHelp {
     Clear-Host
     Write-Host ""
-    Write-Host "  InvokeHub Hilfe" -ForegroundColor Cyan
-    Write-Host "  ===============" -ForegroundColor DarkGray
+    Write-Host "  InvokeHub Help" -ForegroundColor Cyan
+    Write-Host "  ==============" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Navigation:" -ForegroundColor Yellow
-    Write-Host "    - Nummer eingeben: Script direkt auswählen"
-    Write-Host "    - [S]: Nach Scripts suchen (Name, Pfad, Metadaten)"
-    Write-Host "    - [F]: Nach Ordner filtern"
-    Write-Host "    - [H]: Diese Hilfe anzeigen"
-    Write-Host "    - [Q]: Programm beenden"
+    Write-Host "    - Enter number: Select script directly"
+    Write-Host "    - [S]: Search scripts (name, path, metadata)"
+    Write-Host "    - [F]: Filter by folder"
+    Write-Host "    - [H]: Show this help"
+    Write-Host "    - [Q]: Quit program"
     Write-Host ""
-    Write-Host "  Script-Aktionen:" -ForegroundColor Yellow
-    Write-Host "    - [1]: Script ausführen (mit Sicherheitswarnung)"
-    Write-Host "    - [2]: Script herunterladen"
-    Write-Host "    - [3]: Script-Inhalt anzeigen"
-    Write-Host "    - [4]: In Zwischenablage kopieren"
-    Write-Host "    - [0]: Zurück zum Hauptmenü"
+    Write-Host "  Script Actions:" -ForegroundColor Yellow
+    Write-Host "    - [1]: Execute script (with security warning)"
+    Write-Host "    - [2]: Download script"
+    Write-Host "    - [3]: View script content"
+    Write-Host "    - [4]: Copy to clipboard"
+    Write-Host "    - [0]: Back to main menu"
     Write-Host ""
-    Write-Host "  Sicherheit:" -ForegroundColor Red
-    Write-Host "    - Führe nur Scripts aus vertrauenswürdigen Quellen aus"
-    Write-Host "    - Prüfe den Inhalt vor der Ausführung (Option 3)"
-    Write-Host "    - Scripts werden in isoliertem Scope ausgeführt"
+    Write-Host "  Security:" -ForegroundColor Red
+    Write-Host "    - Only execute scripts from trusted sources"
+    Write-Host "    - Review content before execution (option 3)"
+    Write-Host "    - Scripts run in isolated scope"
     Write-Host ""
-    Write-Host "  Tipps:" -ForegroundColor Green
-    Write-Host "    - Verwende Wildcards (*) bei der Suche"
-    Write-Host "    - Scripts können Metadaten enthalten (Autor, Beschreibung)"
-    Write-Host "    - Die API unterstützt Passwort- oder API-Key-Authentifizierung"
+    Write-Host "  Tips:" -ForegroundColor Green
+    Write-Host "    - Use wildcards (*) when searching"
+    Write-Host "    - Scripts can contain metadata (author, description)"
+    Write-Host "    - API supports password or API key authentication"
     Write-Host ""
-    Write-Host "  Über InvokeHub:" -ForegroundColor Cyan
-    Write-Host "    InvokeHub ist eine sichere Platform zur Verwaltung"
-    Write-Host "    und Ausführung von PowerShell Scripts."
+    Write-Host "  About InvokeHub:" -ForegroundColor Cyan
+    Write-Host "    InvokeHub is a secure platform for managing"
+    Write-Host "    and executing PowerShell scripts."
     Write-Host "    Version: 1.0.0"
     Write-Host ""
-    Read-Host "  Enter zum Fortfahren"
+    Read-Host "  Press Enter to continue"
 }
